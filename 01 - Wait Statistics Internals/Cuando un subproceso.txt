@@ -1,0 +1,28 @@
+Cuando un subproceso de trabajo obtiene acceso a un planificador, generalmente comenzará en la Lista de camareros y obtendrá el estado "SUSPENDIDO". La Lista de camareros es una lista desordenada de subprocesos de trabajo que tienen el estado "SUSPENDIDO" y están esperando que los recursos estén disponibles. Esos recursos pueden ser casi cualquier cosa en el sistema, desde páginas de datos hasta una solicitud de bloqueo. Mientras un subproceso de trabajo está en la Lista de camareros, el SQLOS registra el tipo de recurso que necesita para continuar su trabajo (el Tipo de espera) y el tiempo que pasa esperando antes de que ese recurso específico esté disponible, conocido como Tiempo de espera de recursos.
+
+Cada vez que un subproceso de trabajo recibe acceso a los recursos que necesita, se moverá a la Cola Runnable, una lista de primero en entrar, primero en salir de todos los subprocesos de trabajo que tienen acceso a sus recursos y están listos para ejecutarse en el procesador. El tiempo que pasa un subproceso de trabajo en la cola Runnable se registra como el tiempo de espera de la señal.
+
+El primer subproceso de trabajo en la Cola ejecutable pasará a la fase "EN EJECUCIÓN", donde recibirá tiempo de procesador para realizar su trabajo. El tiempo que pasa en el procesador se registra como tiempo de CPU. Mientras tanto, los otros subprocesos de trabajo en la Cola Runnable subirán un lugar más arriba en la lista, y los subprocesos de trabajo que han recibido los recursos solicitados se moverán de la Lista de camareros a la Cola Runnable.
+
+Mientras un subproceso de trabajo se encuentra en la fase "EN EJECUCIÓN", pueden ocurrir tres escenarios:
+
+• El hilo de trabajo necesita recursos adicionales; en este caso pasará de la fase "EN EJECUCIÓN" a la Lista de camareros.
+• El subproceso de trabajo gasta su cantidad (valor fijo de 4 milisegundos) y tiene que ceder; el subproceso de trabajo se mueve al final de la Cola Runnable.
+• El subproceso de trabajo finaliza con su trabajo y abandonará el programador.
+
+Los subprocesos de trabajo se mueven a través de las tres fases diferentes todo el tiempo, y es muy común que un subproceso de trabajo se mueva a través de ellos varias veces hasta que termine su trabajo.
+
+La Figura 1-14 le mostrará la vista del planificador de la Figura 1-13 combinada con los diferentes tipos de Tiempo de espera y el flujo de Subprocesos de trabajo.
+
+Conocer todos los diferentes períodos de tiempo que una solicitud pasa en una de las tres fases diferentes hace posible calcular el tiempo total de ejecución de la solicitud, y también el tiempo total que una solicitud tuvo que esperar, ya sea el tiempo del procesador o el tiempo del recurso. La Figura 1-15 muestra el cálculo del tiempo total de ejecución y sus diferentes partes.
+
+Dado que hay mucha terminología involucrada en la programación de subprocesos de trabajo en SQL Server, me gustaría darle un ejemplo de cómo los subprocesos de trabajo se mueven a través de un programador.
+
+
+La Figura 1-16 le mostrará una imagen abstracta de un programador como los que ya hemos visto, pero esta vez agregué solicitudes que están siendo manejadas por ese programador.
+
+En este ejemplo, vemos que la solicitud del SID (ID de sesión) 76 se está ejecutando actualmente en el procesador; esta solicitud tendrá el estado "EN EJECUCIÓN". Hay otras dos solicitudes, SID 83 y SID 51, en la Lista de camareros que esperan los recursos solicitados. Los tipos de espera que esperan son LCK_M_S y CXPACKET. No entraré en detalles aquí sobre estos Tipos de espera, ya que los cubriremos en la Parte II de este libro. Mientras estas dos sesiones están en la Lista de camareros, SQL Server registrará el tiempo que pasan allí como Tiempo de espera, y el Tipo de espera se anotará como la representación del recurso que están esperando. Si tuviéramos que consultar información sobre estos dos hilos, ambos tendrían el estado "SUSPENDIDO". SID 59, SID 98 y SID 74 tienen sus recursos listos y están esperando en la Cola Runnable que SID 76 complete su trabajo en el procesador. Mientras esperan en la Cola Runnable, SQL Server registra el tiempo que pasan allí como el Tiempo de espera de la señal y agrega ese tiempo al Tiempo total de espera. Estos tres subprocesos de trabajo tendrán el estado de "RUNNABLE".
+
+En Figura 1-17 hemos avanzado unos milisegundos en el tiempo; observe cómo los subprocesos planificador y de trabajo se han movido a través de las diferentes fases y colas.
+
+SID 76 completó su tiempo en el procesador; no necesitaba recursos adicionales para completar su solicitud y, por lo tanto, abandonó el programador. SID 59 fue el primer subproceso de trabajo en la Cola Runnable, y ahora que el procesador está libre, se moverá de la Cola Runnable al procesador, y su estado cambiará de "RUNNABLE" a "RUNNING". El SID 51 termina esperando. el tipo de espera CXPACKET y se movió de la lista de camareros al final de la cola ejecutable, cambiando su estado de "SUSPENDIDO" a "RUNNABLE".
